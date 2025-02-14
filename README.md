@@ -30,6 +30,28 @@ Krishna Chatbot is an AI-powered **voice assistant** that responds to queries in
 
 ---
 
+
+### ✅ Linux Setup
+1. **Update the System**
+   ```bash
+   sudo apt update && sudo apt upgrade -y
+   ```
+2. **Install Required Packages**
+   ```bash
+   sudo apt install python3-pip espeak ffmpeg libsdl2-mixer-2.0-0 -y
+   ```
+3. **Install Python Libraries**
+   ```bash
+   pip3 install speechrecognition pyttsx3 gtts pygame numpy deep_translator requests
+   ```
+4. **Run the Script**
+   ```bash
+   python3 krishna_chatbot.py
+   ```
+
+---
+
+
 ### ✅ Raspberry Pi 4 Setup
 1. **Update the System**
    ```bash
