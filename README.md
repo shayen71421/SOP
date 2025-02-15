@@ -78,11 +78,12 @@ Krishna Chatbot is an AI-powered **voice assistant** that responds to queries in
 ---
 
 ## 🎙️ How to Use
-    **note:Remember to paste your API key**
+
 1. **Start the chatbot** by running the script.
 2. **Say "Hey Krishna" (English) or "ഹലോ കൃഷ്ണ" (Malayalam)** to wake it up.
 3. **Ask a question**, and the bot will respond with AI-generated speech.
 4. **To stop**, say "Krishna Sleep" or "കൃഷ്ണ സ്ലീപ്".
+   **note:Remember to paste your API key**
 
 ---
 
