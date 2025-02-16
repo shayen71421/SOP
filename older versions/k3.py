@@ -35,7 +35,7 @@ engine = pyttsx3.init()
 engine.setProperty('rate', 150)
 
 def remove_emojis(text):
-    
+   
     emoji_pattern = re.compile(
         "[\U0001F600-\U0001F64F"  
         "\U0001F300-\U0001F5FF"  
@@ -49,9 +49,9 @@ def remove_emojis(text):
         "\U00002600-\U000027BF"  
         "]+", flags=re.UNICODE
     )
-    
+   
     text = emoji_pattern.sub(r'', text)
-  
+    
     text = re.sub(r'\*+', '', text)
     
     text = re.sub(r'\s+', ' ', text)
@@ -66,44 +66,28 @@ def get_grok_response(user_input, language="english"):
     GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
     GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
     
-    descriptive_keywords = {
-        "english": ["describe", "explain", "tell", "what is", "how does", "tell me about"],
-        "malayalam": ["വിവരിക്കുക", "വിശദീകരിക്കുക", "പറയുക", "എന്താണ്", "എങ്ങനെ", "കുറിച്ച് പറയുക", "വിശദമാക്കുക"]
-    }
-    
-    
-    is_descriptive = any(keyword in user_input.lower() for keyword in descriptive_keywords[language])
-    
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json"
     }
     
     system_content = {
-        "english": """You are Krishh Bot, a friendly AI for children. Use simple, positive, and age-appropriate language in English.
-                     For descriptive questions, provide detailed explanations with 3-4 key points.
-                     Keep responses engaging but concise.""",
-        "malayalam": """നിങ്ങൾ കുട്ടികൾക്കായുള്ള സൗഹൃദ AI ആയ കൃഷ്ണ ബോട്ട് ആണ്.
-                       വിശദീകരണം ആവശ്യമുള്ള ചോദ്യങ്ങൾക്ക് 3-4 പ്രധാന കാര്യങ്ങൾ ഉൾപ്പെടുത്തി മറുപടി നൽകുക.
-                       ലളിതമായ ഭാഷയിൽ, വ്യക്തമായി ഉത്തരം നൽകുക."""
+        "english": """You are Krishh Bot, a friendly AI for children. Use simple, positive, and age-appropriate language in English. You have knowledge about current affairs, geography, politics, and general knowledge, especially about Kerala and India. Always try to provide accurate and up-to-date information.""",
+        "malayalam": """നിങ്ങൾ കുട്ടികൾക്കായുള്ള സൗഹൃദ AI ആയ കൃഷ്ണ ബോട്ട് ആണ്. കേരളം, ഇന്ത്യ എന്നിവയെക്കുറിച്ചുള്ള നിലവിലെ കാര്യങ്ങൾ, ഭൂമിശാസ്ത്രം, രാഷ്ട്രീയം, പൊതുവിജ്ഞാനം എന്നിവയെക്കുറിച്ച് നിങ്ങൾക്ക് അറിവുണ്ട്. കൃത്യവും പുതിയതുമായ വിവരങ്ങൾ നൽകാൻ ശ്രമിക്കുക. ലളിതമായ ഭാഷയിൽ മറുപടി നൽകുക."""
     }
     
     if language == "malayalam":
         try:
             translator = GoogleTranslator(source='ml', target='en')
             user_input_en = translator.translate(user_input)
-            
-            # Adjust max_tokens based on question type
-            max_tokens = 400 if is_descriptive else 200
-            
             data = {
                 "model": "gemma2-9b-it",
                 "messages": [
-                    {"role": "system", "content": system_content[language]},
-                    {"role": "user", "content": f"{'Provide a detailed explanation about: ' if is_descriptive else ''}{user_input_en}"}
+                    {"role": "system", "content": "Respond in simple English. Give direct answers without repetition."},
+                    {"role": "user", "content": user_input_en}
                 ],
-                "temperature": 0.6,
-                "max_tokens": max_tokens
+                "temperature": 0.5,
+                "max_tokens": 300
             }
             
             response = requests.post(GROQ_API_URL, headers=headers, json=data)
@@ -114,18 +98,12 @@ def get_grok_response(user_input, language="english"):
             translator = GoogleTranslator(source='en', target='ml')
             bot_response = translator.translate(english_response)
             
-           
-            if is_descriptive:
-                
-                bot_response = re.sub(r'•\s*', 'ആദ്യമായി, ', bot_response, count=1)  
-                bot_response = re.sub(r'•\s*', 'പിന്നെ, ', bot_response)  
-                bot_response = re.sub(r'(\d+)\.\s*', r'\1. ആമത്തെ കാര്യം, ', bot_response)  
-               
-                bot_response = bot_response.replace('. ', '.\n')
-            
             bot_response = remove_emojis(bot_response)
             bot_response = re.sub(r'\s+', ' ', bot_response)
             bot_response = bot_response.strip()
+            
+            if not bot_response:
+                return "ക്ഷമിക്കണം, എനിക്ക് മനസ്സിലായില്ല. വീണ്ടും ചോദിക്കാമോ?"
             
             return bot_response
             
@@ -134,15 +112,14 @@ def get_grok_response(user_input, language="english"):
             return "ക്ഷമിക്കണം, എന്തോ തകരാർ സംഭവിച്ചു. വീണ്ടും ശ്രമിക്കാമോ?"
     
     else:
-        max_tokens = 400 if is_descriptive else 200
         data = {
             "model": "gemma2-9b-it",
             "messages": [
                 {"role": "system", "content": system_content[language]},
-                {"role": "user", "content": f"{'Provide a detailed explanation about: ' if is_descriptive else ''}{user_input}"}
+                {"role": "user", "content": user_input}
             ],
-            "temperature": 0.6,
-            "max_tokens": max_tokens
+            "temperature": 0.7,
+            "max_tokens": 500
         }
         
         try:
@@ -150,15 +127,6 @@ def get_grok_response(user_input, language="english"):
             response.raise_for_status()
             result = response.json()
             bot_response = result['choices'][0]['message']['content']
-            
-            
-            if is_descriptive:
-                
-                bot_response = re.sub(r'•\s*', 'First, ', bot_response, count=1)
-                bot_response = re.sub(r'•\s*', 'Next, ', bot_response)
-                bot_response = re.sub(r'(\d+)\.\s*', r'Point \1: ', bot_response)
-                bot_response = bot_response.replace('. ', '.\n')
-            
             bot_response = remove_emojis(bot_response)
             return bot_response
         except Exception as e:
