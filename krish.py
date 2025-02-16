@@ -35,21 +35,25 @@ engine = pyttsx3.init()
 engine.setProperty('rate', 150)
 
 def remove_emojis(text):
+    
     emoji_pattern = re.compile(
-        "[\U0001F600-\U0001F64F"
-        "\U0001F300-\U0001F5FF"
-        "\U0001F680-\U0001F6FF"
-        "\U0001F700-\U0001F77F"
-        "\U0001F780-\U0001F7FF"
-        "\U0001F800-\U0001F8FF"
-        "\U0001F900-\U0001F9FF"
-        "\U0001FA00-\U0001FA6F"
-        "\U0001FA70-\U0001FAFF"
-        "\U00002600-\U000027BF"
+        "[\U0001F600-\U0001F64F"  
+        "\U0001F300-\U0001F5FF"  
+        "\U0001F680-\U0001F6FF"  
+        "\U0001F700-\U0001F77F"  
+        "\U0001F780-\U0001F7FF" 
+        "\U0001F800-\U0001F8FF"  
+        "\U0001F900-\U0001F9FF"  
+        "\U0001FA00-\U0001FA6F"  
+        "\U0001FA70-\U0001FAFF"  
+        "\U00002600-\U000027BF"  
         "]+", flags=re.UNICODE
     )
+   
     text = emoji_pattern.sub(r'', text)
+    
     text = re.sub(r'\*+', '', text)
+    
     text = re.sub(r'\s+', ' ', text)
     text = text.strip()
     return text
@@ -76,44 +80,58 @@ def get_grok_response(user_input, language="english"):
         try:
             translator = GoogleTranslator(source='ml', target='en')
             user_input_en = translator.translate(user_input)
-            user_input_en = f"Please provide accurate information about: {user_input_en}"
-        except:
-            print("Translation error, using original input")
-            user_input_en = user_input
-    else:
-        user_input_en = user_input
-
-    data = {
-        "model": "gemma2-9b-it",
-        "messages": [
-            {"role": "system", "content": system_content[language]},
-            {"role": "user", "content": user_input_en}
-        ],
-        "temperature": 0.7,
-        "max_tokens": 500
-    }
+            data = {
+                "model": "gemma2-9b-it",
+                "messages": [
+                    {"role": "system", "content": "Respond in simple English. Give direct answers without repetition."},
+                    {"role": "user", "content": user_input_en}
+                ],
+                "temperature": 0.5,
+                "max_tokens": 300
+            }
+            
+            response = requests.post(GROQ_API_URL, headers=headers, json=data)
+            response.raise_for_status()
+            result = response.json()
+            english_response = result['choices'][0]['message']['content']
+            
+            translator = GoogleTranslator(source='en', target='ml')
+            bot_response = translator.translate(english_response)
+            
+            bot_response = remove_emojis(bot_response)
+            bot_response = re.sub(r'\s+', ' ', bot_response)
+            bot_response = bot_response.strip()
+            
+            if not bot_response:
+                return "ക്ഷമിക്കണം, എനിക്ക് മനസ്സിലായില്ല. വീണ്ടും ചോദിക്കാമോ?"
+            
+            return bot_response
+            
+        except Exception as e:
+            print(f"Translation/API Error: {e}")
+            return "ക്ഷമിക്കണം, എന്തോ തകരാർ സംഭവിച്ചു. വീണ്ടും ശ്രമിക്കാമോ?"
     
-    try:
-        response = requests.post(GROQ_API_URL, headers=headers, json=data)
-        response.raise_for_status()
-        result = response.json()
-        bot_response = result['choices'][0]['message']['content']
+    else:
+        data = {
+            "model": "gemma2-9b-it",
+            "messages": [
+                {"role": "system", "content": system_content[language]},
+                {"role": "user", "content": user_input}
+            ],
+            "temperature": 0.7,
+            "max_tokens": 500
+        }
         
-        if language == "malayalam":
-            try:
-                translator = GoogleTranslator(source='en', target='ml')
-                bot_response = translator.translate(bot_response)
-                if "sorry" in bot_response.lower() or "don't know" in bot_response.lower():
-                    bot_response += "\n\nക്ഷമിക്കണം, കൃത്യമായ വിവരം ലഭ്യമല്ല. പുതിയ വിവരങ്ങൾക്കായി ദയവായി ഔദ്യോഗിക സ്രോതസ്സുകൾ പരിശോധിക്കുക."
-            except:
-                print("Translation error, using original response")
-        
-        bot_response = remove_emojis(bot_response)
-        bot_response = add_pauses(bot_response)
-        return bot_response
-    except Exception as e:
-        print(f"API Error: {e}")
-        return "ക്ഷമിക്കണം, എന്തോ തകരാർ സംഭവിച്ചു. വീണ്ടും ശ്രമിക്കാമോ?" if language == "malayalam" else "Sorry, I encountered an error. Please try again."
+        try:
+            response = requests.post(GROQ_API_URL, headers=headers, json=data)
+            response.raise_for_status()
+            result = response.json()
+            bot_response = result['choices'][0]['message']['content']
+            bot_response = remove_emojis(bot_response)
+            return bot_response
+        except Exception as e:
+            print(f"API Error: {e}")
+            return "Sorry, I encountered an error. Please try again."
 
 recognizer = sr.Recognizer()
 microphone = sr.Microphone()
@@ -132,8 +150,8 @@ def listen_for_command():
         try:
             audio = recognizer.listen(
                 source, 
-                timeout=15.0,
-                phrase_time_limit=15.0,
+                timeout=10.0,
+                phrase_time_limit=10.0,
                 snowboy_configuration=None
             )
         except sr.WaitTimeoutError:
@@ -239,7 +257,7 @@ def start_chatbot():
     print("\n=== കൃഷ്ണ ചാറ്റ്ബോട്ട് ===")
     print("\nവേക്ക് വേഡുകൾ:")
     print("- ഇംഗ്ലീഷിന്: 'Hey Krishna'")
-    print("- മലയാളത്തിന്: 'ഹലോ കൃഷ്ണ' അല്ലെങ്കിൽ 'കൃഷ്ണ'")
+    print ("- മലയാളത്തിന്: 'ഹലോ കൃഷ്ണ' അല്ലെങ്കിൽ 'കൃഷ്ണ'")
     print("- നിർത്താൻ: 'Krishna Sleep' അല്ലെങ്കിൽ 'കൃഷ്ണ സ്ലീപ്'\n")
     
     active_conversation = False
@@ -263,7 +281,7 @@ def start_chatbot():
             
         print("Processing...")
 
-        if any(phrase in user_input.lower() for phrase in ["krishna sleep", "കൃഷ്ണ സ്ലീപ്", "ക്രിഷ്ണ സ്ലീപ്","sleep","സ്ലീപ്"]):
+        if any(phrase in user_input.lower() for phrase in ["krishna sleep", "കൃഷ്ണ സ്ലീപ്", "ക്രിഷ്ണ സ്ലീപ്","സ്ലീപ്"]):
             goodbye = "Goodbye! Say Hey Krishna when you need me again." if current_language == "english" else "വിട! വീണ്ടും സഹായം വേണമെങ്കിൽ 'ഹലോ കൃഷ്ണ' എന്ന് വിളിക്കൂ."
             speak_response(goodbye, current_language)
             print("Krishna Bot:", goodbye)
