@@ -30,7 +30,8 @@ Krishna Chatbot is an AI-powered **voice assistant** that responds to queries in
 
 ---
 
-### ✅ Raspberry Pi 4 Setup
+
+### ✅ Linux Setup
 1. **Update the System**
    ```bash
    sudo apt update && sudo apt upgrade -y
@@ -50,7 +51,35 @@ Krishna Chatbot is an AI-powered **voice assistant** that responds to queries in
 
 ---
 
+
+### ✅ Raspberry Pi 4 Setup
+1. **Update the System**
+   ```bash
+   sudo apt update && sudo apt upgrade -y
+   ```
+2. **Install Required Packages**
+   ```bash
+   sudo apt install python3-pip espeak ffmpeg libsdl2-mixer-2.0-0 -y
+   ```
+3. **Install Python Libraries**
+   ```bash
+   pip3 install speechrecognition pyttsx3 gtts pygame numpy deep_translator requests
+   ```
+4. **Enable Audio and Set Permissions**
+   ```bash
+   sudo usermod -aG audio pi
+   reboot
+   ```
+5. **Run the Script**
+   ```bash
+   python3 krishna_chatbot.py
+   ```
+
+---
+
 ## 🎙️ How to Use
+
+0. **Remember to paste your API key in line 32**
 1. **Start the chatbot** by running the script.
 2. **Say "Hey Krishna" (English) or "ഹലോ കൃഷ്ണ" (Malayalam)** to wake it up.
 3. **Ask a question**, and the bot will respond with AI-generated speech.
@@ -65,17 +94,44 @@ Krishna Chatbot is an AI-powered **voice assistant** that responds to queries in
   arecord -l
   ```
 - Adjust audio settings using `alsamixer`.
+- If the microphone is not working, try:
+  ```bash
+  sudo nano /boot/config.txt
+  ```
+  Add the following line at the end:
+  ```
+  dtparam=audio=on
+  ```
+  Save and reboot.
 
 ### 🛠 Speech Recognition Issues
 - If the bot doesn't recognize your voice, increase **timeout** in:
   ```python
   recognizer.listen(source, timeout=20)
   ```
+- If Malayalam recognition is inaccurate, try updating `speechrecognition`:
+  ```bash
+  pip install --upgrade speechrecognition
+  ```
 
 ### 🛠 TTS Not Working (Pyttsx3)
 - Make sure **espeak** is installed:
   ```bash
   sudo apt install espeak
+  ```
+- If TTS crashes, try reinstalling:
+  ```bash
+  pip uninstall pyttsx3 && pip install pyttsx3
+  ```
+
+### 🛠 No Sound Output (Raspberry Pi)
+- Set the correct audio output:
+  ```bash
+  amixer cset numid=3 1  # 1 for headphones, 2 for HDMI
+  ```
+- Test the speaker:
+  ```bash
+  speaker-test -t wav -c 2
   ```
 
 ---
