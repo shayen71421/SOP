@@ -5,7 +5,7 @@ Krishna Chatbot is an AI-powered **voice assistant** that responds to queries in
 
 ## 🔧 Features
 - 🎤 **Voice Command Recognition** (English & Malayalam)
-- 🗣️ **Text-to-Speech (TTS)** using `pyttsx3` and `gtts`
+- 🗣️ **Text-to-Speech (TTS)** using `pyttsx4` and `gtts`
 - 🔍 **AI-Powered Responses** using `GROQ API`
 - 🔔 **Notification Sound** before listening
 - 🎶 **Audio Output** with `pygame.mixer`
@@ -19,7 +19,7 @@ Krishna Chatbot is an AI-powered **voice assistant** that responds to queries in
    ```bash
    pip install speechrecognition pyttsx3 gtts pygame numpy deep_translator requests
    ```
-2. **Ensure Espeak is Installed** (for `pyttsx3` TTS)
+2. **Ensure Espeak is Installed** (for `pyttsx4` TTS)
    ```bash
    sudo apt install espeak
    ```
@@ -42,7 +42,7 @@ Krishna Chatbot is an AI-powered **voice assistant** that responds to queries in
    ```
 3. **Install Python Libraries**
    ```bash
-   pip3 install speechrecognition pyttsx3 gtts pygame numpy deep_translator requests
+   pip3 install speechrecognition pyttsx4 gtts pygame numpy deep_translator requests
    ```
 4. **Run the Script**
    ```bash
@@ -63,7 +63,7 @@ Krishna Chatbot is an AI-powered **voice assistant** that responds to queries in
    ```
 3. **Install Python Libraries**
    ```bash
-   pip3 install speechrecognition pyttsx3 gtts pygame numpy deep_translator requests
+   pip3 install speechrecognition pyttsx4 gtts pygame numpy deep_translator requests
    ```
 4. **Enable Audio and Set Permissions**
    ```bash
