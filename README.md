@@ -17,7 +17,7 @@ Krishna Chatbot is an AI-powered **voice assistant** that responds to queries in
 1. **Install Dependencies**  
    Open **Command Prompt (cmd)** and run:
    ```bash
-   pip install speechrecognition pyttsx3 gtts pygame numpy deep_translator requests
+   pip install speechrecognition pyttsx4 gtts pygame numpy deep_translator requests
    ```
 2. **Ensure Espeak is Installed** (for `pyttsx4` TTS)
    ```bash
