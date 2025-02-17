@@ -7,7 +7,7 @@ from groq import Groq
 import threading
 
 
-os.environ["GROQ_API_KEY"] = "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"  # API key
+os.environ["GROQ_API_KEY"] =""  # API key
 
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
