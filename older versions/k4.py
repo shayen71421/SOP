@@ -12,11 +12,6 @@ import pygame.mixer
 import requests
 import json
 from deep_translator import GoogleTranslator
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-
-app = Flask(__name__)
-CORS(app)
 
 pygame.mixer.init(44100, -16, 2, 2048)
 
@@ -34,7 +29,7 @@ def play_notification():
     sound.play()
     pygame.time.wait(int(duration * 1000))
 
-os.environ["GROQ_API_KEY"] = "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" # Add your API key here
+os.environ["GROQ_API_KEY"] = "" # Add your API key here
 
 engine = pyttsx3.init()
 engine.setProperty('rate', 150)
@@ -330,15 +325,6 @@ def start_chatbot():
         print(f"You: {user_input}")
         print(f"Krishna Bot: {bot_response}")
 
-@app.route('/api/chat', methods=['POST'])
-def chat():
-    data = request.json
-    user_input = data.get('message')
-    language = data.get('language', 'english')
-    response = get_grok_response(user_input, language)
-    return jsonify({'response': response})
-
 if __name__ == "__main__":
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
     start_chatbot()
+
