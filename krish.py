@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 import os
 import speech_recognition as sr
 import pyttsx4 as pyttsx3
@@ -73,56 +75,62 @@ def get_grok_response(user_input, language="english"):
     
     if language == "malayalam":
         try:
-            # Check for elaborate/detailed request keywords
-            elaborate_keywords = ["????????", "??????????", "?????????????", "?????? ????"]
-            is_elaborate = any(keyword in user_input.lower() for keyword in elaborate_keywords)
-            
-            # Translate to English
             translator = GoogleTranslator(source='ml', target='en')
             user_input_en = translator.translate(user_input)
             
+            # Modified system prompt for better factual responses
             system_prompt = """You are Krishna Bot, a friendly AI assistant for Malayalam-speaking children.
-                             Keep responses natural and child-friendly.
-                             Answer mathematical questions directly.
-                             Answer all questions directly
-                             Never add words like 'pathanam' or unnecessary text at the end.
-                             Give direct, clear answers."""
+                             For questions about people and positions:
+                             1. Give their current role/position
+                             2. Use simple language
+                             3. Keep responses factual and direct
+                             4. Avoid unnecessary words or phrases"""
             
             data = {
                 "model": "gemma2-9b-it",
                 "messages": [
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_input_en}
+                    {"role": "user", "content": f"Who is {user_input_en}? Give a simple, direct answer."}
                 ],
-                "temperature": 0.3,
-                "max_tokens": 150 if is_elaborate else 100
+                "temperature": 0.3,  # Reduced for more factual responses
+                "max_tokens": 150
             }
             
+            # Add error checking for API response
             response = requests.post(GROQ_API_URL, headers=headers, json=data)
             response.raise_for_status()
             result = response.json()
+            
+            if not result.get('choices') or not result['choices'][0].get('message', {}).get('content'):
+                return "ക്ഷമിക്കണം, ഉത്തരം ലഭ്യമല്ല. വീണ്ടും ശ്രമിക്കാമോ?"
+                
             english_response = result['choices'][0]['message']['content']
             
-            # Translate back to Malayalam
+            # Handle empty response
+            if not english_response.strip():
+                return "ക്ഷമിക്കണം, ഉത്തരം ലഭ്യമല്ല. വീണ്ടും ശ്രമിക്കാമോ?"
+                
             translator = GoogleTranslator(source='en', target='ml')
             bot_response = translator.translate(english_response)
             
-            # Clean up response
+            # Enhanced response cleanup
             bot_response = remove_emojis(bot_response.strip())
-            bot_response = bot_response.replace('  ', ' ')
-            bot_response = bot_response.replace('????', '')  # Remove "pathanam" if present
+            bot_response = re.sub(r'\s+', ' ', bot_response)
             
+            if not bot_response.strip():
+                return "ക്ഷമിക്കണം, ഉത്തരം ലഭ്യമല്ല. വീണ്ടും ശ്രമിക്കാമോ?"
+                
             return bot_response.strip()
             
         except Exception as e:
-            print(f"Error in Malayalam processing: {e}")
-            return "??????????, ????? ????? ?????????. ??????? ????????????"
+            print(f"Error in Malayalam processing: {str(e)}")
+            return "ക്ഷമിക്കണം, എന്തോ തകരാർ സംഭവിച്ചു. വീണ്ടും ശ്രമിക്കാമോ?"
 
     else:
         # Rest of the English handling code remains the same
         descriptive_keywords = {
-            "english": ["oi"],
-            "malayalam": ["??????????", "?????????????", "?????", "???????", "??????", "???????? ?????", "???????????"]
+            "english": ["describe", "explain", "tell", "what is", "how does", "tell me about"],
+            "malayalam": ["വിവരിക്കുക", "വിശദീകരിക്കുക", "പറയുക", "എന്താണ്", "എങ്ങനെ", "കുറിച്ച് പറയുക", "വിശദമാക്കുക"]
         }
         
         
@@ -132,12 +140,12 @@ def get_grok_response(user_input, language="english"):
             "english": """You are Krishna Bot, a friendly AI for children. Use simple, positive, and age-appropriate language in English.
                          For descriptive questions, provide detailed explanations with 3-4 key points.
                          Keep responses engaging but concise.""",
-            "malayalam": """?????? ????????????????? ????? AE ?? ????? ?????? ???.
-                           ????????? ?????????? ????????????? 3-4 ?????? ????????? ???????????? ?????? ?????.
-                           ??????? ??????, ?????????? ?????? ?????."""
+            "malayalam": """നിങ്ങൾ കുട്ടികൾക്കായുള്ള സൗഹൃദ AE ആയ കൃഷ്ണ ബോട്ട് ആണ്.
+                           വിശദീകരണം ആവശ്യമുള്ള ചോദ്യങ്ങൾക്ക് 3-4 പ്രധാന കാര്യങ്ങൾ ഉൾപ്പെടുത്തി മറുപടി നൽകുക.
+                           ലളിതമായ ഭാഷയിൽ, വ്യക്തമായി ഉത്തരം നൽകുക."""
         }
         
-        max_tokens = 600 if is_descriptive else 300
+        max_tokens = 200 if is_descriptive else 100
         data = {
             "model": "gemma2-9b-it",
             "messages": [
@@ -157,8 +165,8 @@ def get_grok_response(user_input, language="english"):
             
             if is_descriptive:
                 
-                bot_response = re.sub(r'?\s*', 'First, ', bot_response, count=1)
-                bot_response = re.sub(r'?\s*', 'Next, ', bot_response)
+                bot_response = re.sub(r'•\s*', 'First, ', bot_response, count=1)
+                bot_response = re.sub(r'•\s*', 'Next, ', bot_response)
                 bot_response = re.sub(r'(\d+)\.\s*', r'Point \1: ', bot_response)
                 bot_response = bot_response.replace('. ', '.\n')
             
@@ -173,7 +181,7 @@ microphone = sr.Microphone()
 
 def listen_for_command():
     with microphone as source:
-        print("?????? ????????..." if current_language == "malayalam" else "Listening...")
+        print("ചോദ്യം ചോദിക്കൂ..." if current_language == "malayalam" else "Listening...")
         play_notification()
         recognizer.adjust_for_ambient_noise(source, duration=2)
         
@@ -190,17 +198,17 @@ def listen_for_command():
                 snowboy_configuration=None
             )
         except sr.WaitTimeoutError:
-            print("???? ???????. ??????? ?????????." if current_language == "malayalam" else "Listening timed out. Please try again.")
+            print("സമയം കഴിഞ്ഞു. വീണ്ടും ശ്രമിക്കൂ." if current_language == "malayalam" else "Listening timed out. Please try again.")
             return ""
     
     try:
         if current_language == "malayalam":
             try:
                 command = recognizer.recognize_google(audio, language='ml-IN')
-                print(f"?????? ???????: {command}")
+                print(f"കമാൻഡ് ലഭിച്ചു: {command}")
                 return command.lower()
             except sr.UnknownValueError:
-                print("??????????, ??????? ?????????????. ??????? ???????")
+                print("ക്ഷമിക്കണം, എനിക്ക് മനസ്സിലായില്ല. വീണ്ടും പറയാമോ?")
                 return ""
             except Exception as e:
                 print(f"Error: {e}")
@@ -211,10 +219,10 @@ def listen_for_command():
             return command.lower()
             
     except sr.UnknownValueError:
-        print("??????????, ??????? ?????????????. ??????? ???????" if current_language == "malayalam" else "Sorry, I could not understand the audio.")
+        print("ക്ഷമിക്കണം, എനിക്ക് മനസ്സിലായില്ല. വീണ്ടും പറയാമോ?" if current_language == "malayalam" else "Sorry, I could not understand the audio.")
         return ""
     except sr.RequestError:
-        print("??????? ??????????? ?????????? ??????????? ??????????." if current_language == "malayalam" else "Could not request results from Speech Recognition service.")
+        print("വോയ്‌സ് റെക്കഗ്നിഷൻ സേവനവുമായി ബന്ധപ്പെടാൻ കഴിഞ്ഞില്ല." if current_language == "malayalam" else "Could not request results from Speech Recognition service.")
         return ""
 
 def speak_response(response, language="english"):
@@ -260,7 +268,7 @@ def speak_response(response, language="english"):
 
 def listen_for_wake_word():
     with microphone as source:
-        print("?????? ???????? ????????????????...")
+        print("വേക്ക് വേഡിനായി കാത്തിരിക്കുന്നു...")
         recognizer.adjust_for_ambient_noise(source)
         audio = recognizer.listen(source)
     
@@ -284,9 +292,9 @@ def listen_for_wake_word():
         
         try:
             command_ml = recognizer.recognize_google(audio, language='ml-IN').lower()
-            print(f"???????: {command_ml}")
+            print(f"കേട്ടത്: {command_ml}")
             
-            malayalam_variations = ["??? ?????", "???", "?????", "??? ??????"]
+            malayalam_variations = ["ഹലോ കൃഷ്ണ", "ഹലോ", "കൃഷ്ണ", "ഹലോ കൃഷ്ണാ"]
             if any(word in command_ml for word in malayalam_variations):
                 return "malayalam"
         except:
@@ -297,16 +305,16 @@ def listen_for_wake_word():
     except sr.UnknownValueError:
         return None
     except sr.RequestError:
-        print("??????? ??????????? ?????????? ??????????? ??????????.")
+        print("വോയ്‌സ് റെക്കഗ്നിഷൻ സേവനവുമായി ബന്ധപ്പെടാൻ കഴിഞ്ഞില്ല.")
         return None
 
 def start_chatbot():
     global current_language
-    print("\n=== ????? ???????????? ===")
-    print("\n?????? ??????:")
-    print("- ??????????: 'Hey Krishna'")
-    print ("- ???????????: '??? ?????' ?????????? '?????'")
-    print("- ????????: 'Krishna Sleep' ?????????? '????? ??????'\n")
+    print("\n=== കൃഷ്ണ ചാറ്റ്ബോട്ട് ===")
+    print("\nവേക്ക് വേഡുകൾ:")
+    print("- ഇംഗ്ലീഷിന്: 'Hey Krishna'")
+    print ("- മലയാളത്തിന്: 'ഹലോ കൃഷ്ണ' അല്ലെങ്കിൽ 'കൃഷ്ണ'")
+    print("- നിർത്താൻ: 'Krishna Sleep' അല്ലെങ്കിൽ 'കൃഷ്ണ സ്ലീപ്'\n")
     
     active_conversation = False
     current_language = None
@@ -318,7 +326,7 @@ def start_chatbot():
                 continue
             active_conversation = True
             current_language = language
-            greeting = "How can I help you?" if language == "english" else "??????? ????? ????????"
+            greeting = "How can I help you?" if language == "english" else "എന്താണ് സഹായം വേണ്ടത്?"
             speak_response(greeting, current_language)
         
         print("\nListening for your question...")
@@ -329,8 +337,8 @@ def start_chatbot():
             
         print("Processing...")
 
-        if any(phrase in user_input.lower() for phrase in ["krishna sleep", "????? ??????", "??????? ??????","??????"]):
-            goodbye = "Goodbye! Say Hey Krishna when you need me again." if current_language == "english" else "???! ??????? ????? ?????????? '??? ?????' ????? ????????."
+        if any(phrase in user_input.lower() for phrase in ["krishna sleep", "കൃഷ്ണ സ്ലീപ്", "ക്രിഷ്ണ സ്ലീപ്","സ്ലീപ്"]):
+            goodbye = "Goodbye! Say Hey Krishna when you need me again." if current_language == "english" else "വിട! വീണ്ടും സഹായം വേണമെങ്കിൽ 'ഹലോ കൃഷ്ണ' എന്ന് വിളിക്കൂ."
             speak_response(goodbye, current_language)
             print("Krishna Bot:", goodbye)
             active_conversation = False
