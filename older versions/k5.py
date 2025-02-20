@@ -29,7 +29,7 @@ def play_notification():
     sound.play()
     pygame.time.wait(int(duration * 1000))
 
-os.environ["GROQ_API_KEY"] = "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" # Add your API key here
+os.environ["GROQ_API_KEY"] = "" # Add your API key here
 
 # engine = pyttsx3.init()
 # engine.setProperty('rate', 150)

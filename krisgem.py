@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# -- coding: utf-8 --
 import os
 import speech_recognition as sr
 import pyttsx4 as pyttsx3
@@ -8,12 +8,13 @@ import pygame
 import numpy as np
 import threading
 import gtts
-from playsound import playsound
+import playsound
 import tempfile
 import pygame.mixer
 import requests
 import json
 from deep_translator import GoogleTranslator
+import google.generativeai as genai
 
 pygame.mixer.init(44100, -16, 2, 2048)
 
@@ -31,13 +32,9 @@ def play_notification():
     sound.play()
     pygame.time.wait(int(duration * 1000))
 
-os.environ["GROQ_API_KEY"] = "" # Add your API key here
-
-# engine = pyttsx3.init()
-# engine.setProperty('rate', 150)
+os.environ["GOOGLE_API_KEY"] = ""  # Add your API key here
 
 def remove_emojis(text):
-    
     emoji_pattern = re.compile(
         "[\U0001F600-\U0001F64F"  
         "\U0001F300-\U0001F5FF"  
@@ -51,11 +48,8 @@ def remove_emojis(text):
         "\U00002600-\U000027BF"  
         "]+", flags=re.UNICODE
     )
-    
     text = emoji_pattern.sub(r'', text)
-  
     text = re.sub(r'\*+', '', text)
-    
     text = re.sub(r'\s+', ' ', text)
     text = text.strip()
     return text
@@ -64,75 +58,76 @@ def add_pauses(response):
     response = re.sub(r'([.?!])', r'\1\n', response)
     return response
 
-def get_grok_response(user_input, language="english"):
-    GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-    GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-    
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
+def get_gemini_response(user_input, language="english"):
+    GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+    genai.configure(api_key=GOOGLE_API_KEY)
+    model = genai.GenerativeModel('gemini-2.0-flash')
     
     if language == "malayalam":
         try:
             translator = GoogleTranslator(source='ml', target='en')
             user_input_en = translator.translate(user_input)
             
-           
             system_prompt = """You are Krishna Bot, a friendly AI assistant for Malayalam-speaking children.
-                             For questions about people and positions:
-                             1. Give their current role/position
-                             2. Use simple language
-                             3. Keep responses factual and direct
-                             4. Avoid unnecessary words or phrases"""
+                             When asked about officials or positions:
+                             1. Use simple Malayalam without filler words
+                             2. Never use phrases like 'ഒരു തരത്തിൽ' or similar words"""
             
-            data = {
-                "model": "gemma2-9b-it",
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"Who is {user_input_en}? Give a simple, direct answer."}
-                ],
-                "temperature": 0.3, 
-                "max_tokens": 150
-            }
+            response = model.generate_content(
+                f"{system_prompt}\n\nQuestion: {user_input_en}\nProvide a direct answer:",
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.3,
+                    max_output_tokens=100,
+                    top_p=0.1,
+                    top_k=1
+                )
+            )
             
-           
-            response = requests.post(GROQ_API_URL, headers=headers, json=data)
-            response.raise_for_status()
-            result = response.json()
+            if not hasattr(response, 'text') or not response.text.strip():
+                return "എനിക്ക് ഇപ്പോഴത്തെ വിവരം അറിയില്ല."
             
-            if not result.get('choices') or not result['choices'][0].get('message', {}).get('content'):
-                return "ക്ഷമിക്കണം, ഉത്തരം ലഭ്യമല്ല. വീണ്ടും ശ്രമിക്കാമോ?"
+            try:
+                translator = GoogleTranslator(source='en', target='ml')
+                bot_response = translator.translate(response.text)
                 
-            english_response = result['choices'][0]['message']['content']
-            
-           
-            if not english_response.strip():
-                return "ക്ഷമിക്കണം, ഉത്തരം ലഭ്യമല്ല. വീണ്ടും ശ്രമിക്കാമോ?"
                 
-            translator = GoogleTranslator(source='en', target='ml')
-            bot_response = translator.translate(english_response)
-            
-            
-            bot_response = remove_emojis(bot_response.strip())
-            bot_response = re.sub(r'\s+', ' ', bot_response)
-            
-            if not bot_response.strip():
-                return "ക്ഷമിക്കണം, ഉത്തരം ലഭ്യമല്ല. വീണ്ടും ശ്രമിക്കാമോ?"
+                unwanted_phrases = [
+                    'ഒരു തരത്തിൽ',
+                    'തരത്തിൽ',
+                    'തരത്തിലുള്ള',
+                    'തരത്തിലാണ്',
+                    'ഒരുകൂട്ടം',
+                    'അദൃശ്യമാണ്'
+                ]
                 
-            return bot_response.strip()
-            
+                for phrase in unwanted_phrases:
+                    bot_response = bot_response.replace(phrase, '')
+                
+                bot_response = remove_emojis(bot_response.strip())
+                bot_response = re.sub(r'\s+', ' ', bot_response)
+                
+                
+                bot_response = re.sub(r'\.+', '.', bot_response)
+                bot_response = re.sub(r'\s+', ' ', bot_response)
+                bot_response = bot_response.strip()
+                
+                if not bot_response or len(bot_response) < 5:
+                    return "എനിക്ക് ഇപ്പോഴത്തെ വിവരം അറിയില്ല."
+                
+                return bot_response
+                
+            except Exception as e:
+                print(f"Translation error: {str(e)}")
+                return "ക്ഷമിക്കണം, ഭാഷാ പരിഭാഷയിൽ പിശക് സംഭവിച്ചു."
+                
         except Exception as e:
-            print(f"Error in Malayalam processing: {str(e)}")
-            return "ക്ഷമിക്കണം, എന്തോ തകരാർ സംഭവിച്ചു. വീണ്ടും ശ്രമിക്കാമോ?"
-
+            print(f"Malayalam processing error: {str(e)}")
+            return "ക്ഷമിക്കണം, എന്തോ തകരാർ സംഭവിച്ചു."
     else:
-        
         descriptive_keywords = {
             "english": ["describe", "explain", "tell", "what is", "how does", "tell me about"],
             "malayalam": ["വിവരിക്കുക", "വിശദീകരിക്കുക", "പറയുക", "എന്താണ്", "എങ്ങനെ", "കുറിച്ച് പറയുക", "വിശദമാക്കുക"]
         }
-        
         
         is_descriptive = any(keyword in user_input.lower() for keyword in descriptive_keywords[language])
         
@@ -145,26 +140,23 @@ def get_grok_response(user_input, language="english"):
                            ലളിതമായ ഭാഷയിൽ, വ്യക്തമായി ഉത്തരം നൽകുക."""
         }
         
-        max_tokens = 200 if is_descriptive else 100
-        data = {
-            "model": "gemma2-9b-it",
-            "messages": [
-                {"role": "system", "content": system_content[language]},
-                {"role": "user", "content": f"{'Provide a detailed explanation about: ' if is_descriptive else ''}{user_input}"}
-            ],
-            "temperature": 0.6,
-            "max_tokens": max_tokens
-        }
-        
         try:
-            response = requests.post(GROQ_API_URL, headers=headers, json=data)
-            response.raise_for_status()
-            result = response.json()
-            bot_response = result['choices'][0]['message']['content']
+            prompt = f"{system_content[language]}\n\n{'Provide a detailed explanation about: ' if is_descriptive else ''}{user_input}"
             
+            response = model.generate_content(
+                prompt,
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.6,
+                    max_output_tokens=200 if is_descriptive else 100,
+                )
+            )
+            
+            if response is None or not hasattr(response, 'text'):
+                return "Sorry, I encountered an error. Please try again."
+            
+            bot_response = response.text
             
             if is_descriptive:
-                
                 bot_response = re.sub(r'•\s*', 'First, ', bot_response, count=1)
                 bot_response = re.sub(r'•\s*', 'Next, ', bot_response)
                 bot_response = re.sub(r'(\d+)\.\s*', r'Point \1: ', bot_response)
@@ -172,6 +164,7 @@ def get_grok_response(user_input, language="english"):
             
             bot_response = remove_emojis(bot_response)
             return bot_response
+            
         except Exception as e:
             print(f"API Error: {e}")
             return "Sorry, I encountered an error. Please try again."
@@ -221,15 +214,16 @@ def listen_for_command():
     except sr.UnknownValueError:
         print("ക്ഷമിക്കണം, എനിക്ക് മനസ്സിലായില്ല. വീണ്ടും പറയാമോ?" if current_language == "malayalam" else "Sorry, I could not understand the audio.")
         return ""
-    except sr.RequestError:
+    except sr.RequestError as e:
         print("വോയ്‌സ് റെക്കഗ്നിഷൻ സേവനവുമായി ബന്ധപ്പെടാൻ കഴിഞ്ഞില്ല." if current_language == "malayalam" else "Could not request results from Speech Recognition service.")
+        print(f"Error: {e}")
         return ""
 
 def speak_response(response, language="english"):
     if language == "english":
         try:
             
-            tts = gtts.gTTS(text=response, lang='en', tld='co.in') 
+            tts = gtts.gTTS(text=response, lang='en', tld='co.in')  
             temp_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'temp')
             os.makedirs(temp_dir, exist_ok=True)
             temp_file = os.path.join(temp_dir, 'temp_audio.mp3')
@@ -270,7 +264,10 @@ def listen_for_wake_word():
     with microphone as source:
         print("വേക്ക് വേഡിനായി കാത്തിരിക്കുന്നു...")
         recognizer.adjust_for_ambient_noise(source)
-        audio = recognizer.listen(source)
+        try:
+            audio = recognizer.listen(source)
+        except sr.WaitTimeoutError:
+            return None
     
     try:
         try:
@@ -279,7 +276,7 @@ def listen_for_wake_word():
             
             english_variations = [
                 "hey krishna", "hey krishno", "hi krishna",
-                "hey krish", "hi krish"
+                "hey krish"
             ]
             
             if "hello krishna" in command_en:
@@ -297,13 +294,11 @@ def listen_for_wake_word():
             malayalam_variations = ["ഹലോ കൃഷ്ണ", "ഹലോ", "കൃഷ്ണ", "ഹലോ കൃഷ്ണാ"]
             if any(word in command_ml for word in malayalam_variations):
                 return "malayalam"
-        except:
+        except sr.UnknownValueError:
             pass
         
         return None
         
-    except sr.UnknownValueError:
-        return None
     except sr.RequestError:
         print("വോയ്‌സ് റെക്കഗ്നിഷൻ സേവനവുമായി ബന്ധപ്പെടാൻ കഴിഞ്ഞില്ല.")
         return None
@@ -344,11 +339,10 @@ def start_chatbot():
             active_conversation = False
             continue
 
-        bot_response = get_grok_response(user_input, current_language)
+        bot_response = get_gemini_response(user_input, current_language)
         speak_response(bot_response, current_language)
         print(f"You: {user_input}")
         print(f"Krishna Bot: {bot_response}")
 
 if __name__ == "__main__":
     start_chatbot()
-

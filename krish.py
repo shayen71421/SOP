@@ -31,10 +31,10 @@ def play_notification():
     sound.play()
     pygame.time.wait(int(duration * 1000))
 
-os.environ["GROQ_API_KEY"] = "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" # Add your API key here
+os.environ["GROQ_API_KEY"] = "" # Add your API key here
 
-# engine = pyttsx3.init()
-# engine.setProperty('rate', 150)
+engine = pyttsx3.init()
+engine.setProperty('rate', 150)
 
 def remove_emojis(text):
     
@@ -78,7 +78,7 @@ def get_grok_response(user_input, language="english"):
             translator = GoogleTranslator(source='ml', target='en')
             user_input_en = translator.translate(user_input)
             
-            # Modified system prompt for better factual responses
+            
             system_prompt = """You are Krishna Bot, a friendly AI assistant for Malayalam-speaking children.
                              For questions about people and positions:
                              1. Give their current role/position
@@ -92,11 +92,11 @@ def get_grok_response(user_input, language="english"):
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": f"Who is {user_input_en}? Give a simple, direct answer."}
                 ],
-                "temperature": 0.3,  # Reduced for more factual responses
+                "temperature": 0.3,  
                 "max_tokens": 150
             }
             
-            # Add error checking for API response
+            
             response = requests.post(GROQ_API_URL, headers=headers, json=data)
             response.raise_for_status()
             result = response.json()
@@ -106,14 +106,14 @@ def get_grok_response(user_input, language="english"):
                 
             english_response = result['choices'][0]['message']['content']
             
-            # Handle empty response
+           
             if not english_response.strip():
                 return "ക്ഷമിക്കണം, ഉത്തരം ലഭ്യമല്ല. വീണ്ടും ശ്രമിക്കാമോ?"
                 
             translator = GoogleTranslator(source='en', target='ml')
             bot_response = translator.translate(english_response)
             
-            # Enhanced response cleanup
+           
             bot_response = remove_emojis(bot_response.strip())
             bot_response = re.sub(r'\s+', ' ', bot_response)
             
@@ -127,7 +127,7 @@ def get_grok_response(user_input, language="english"):
             return "ക്ഷമിക്കണം, എന്തോ തകരാർ സംഭവിച്ചു. വീണ്ടും ശ്രമിക്കാമോ?"
 
     else:
-        # Rest of the English handling code remains the same
+        
         descriptive_keywords = {
             "english": ["describe", "explain", "tell", "what is", "how does", "tell me about"],
             "malayalam": ["വിവരിക്കുക", "വിശദീകരിക്കുക", "പറയുക", "എന്താണ്", "എങ്ങനെ", "കുറിച്ച് പറയുക", "വിശദമാക്കുക"]
@@ -228,8 +228,8 @@ def listen_for_command():
 def speak_response(response, language="english"):
     if language == "english":
         try:
-            # Use Google TTS with Indian English accent
-            tts = gtts.gTTS(text=response, lang='en', tld='co.in')  # tld='co.in' for Indian English
+          
+            tts = gtts.gTTS(text=response, lang='en', tld='co.in') 
             temp_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'temp')
             os.makedirs(temp_dir, exist_ok=True)
             temp_file = os.path.join(temp_dir, 'temp_audio.mp3')
