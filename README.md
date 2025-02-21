@@ -35,13 +35,13 @@ Both versions offer similar core functionality while utilizing different AI back
 
 ## Basic Usage
 
-Each version uses the same wake words and commands:
+Each version uses the same wake words:
 
 - Wake Words:
   - English: "Hey Krishna" or "Hi Krishna"
   - Malayalam: "ഹലോ കൃഷ്ണ" or "കൃഷ്ണ"
 
-- Stop Command:
+- Stop Command:(only for groq version)
   - English: "Krishna Sleep"
   - Malayalam: "കൃഷ്ണ സ്ലീപ്"
 
