@@ -1,0 +1,9 @@
+deep_translator
+gTTS
+numpy
+playsound
+pygame
+PyAudio
+pyttsx4
+requests
+SpeechRecognition
